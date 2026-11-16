@@ -131,5 +131,10 @@ class GatewayTest(unittest.TestCase):
         s.close()
 
 
+    def test_the_fingerprint_is_the_same_in_php_python_and_node(self):
+        from tool_guard.gateway import fingerprint
+        self.assertEqual("8d2ea801481f52d5", fingerprint(json.loads('{"name":"send_email","description":"Envoie un e-mail à l/équipe","inputSchema":{"type":"object","properties":{"to":{"type":"string"}}}}')))
+
+
 if __name__ == "__main__":
     unittest.main()

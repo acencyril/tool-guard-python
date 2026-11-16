@@ -57,7 +57,8 @@ SUSPICIOUS = [
 
 def fingerprint(tool: dict[str, Any]) -> str:
     keep = {"name": tool.get("name"), "description": tool.get("description"), "inputSchema": tool.get("inputSchema")}
-    return hashlib.sha256(json.dumps(keep, sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:16]
+    # compact JSON, keys sorted: the same fingerprint as the PHP and Node gateways
+    return hashlib.sha256(json.dumps(keep, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode()).hexdigest()[:16]
 
 
 def suspicious(tool: dict[str, Any]) -> str | None:
