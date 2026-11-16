@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tool-guard"
+version = "0.1.0"
+description = "Permissions, limits, rate limits, human approval and a stop button for the tools an AI agent may call. A prompt asks; Tool Guard decides."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [{ name = "Cyril Delage" }]
+keywords = ["ai", "agents", "llm", "tool-calling", "mcp", "guardrails", "security", "human-in-the-loop"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Intended Audience :: Developers",
+    "Topic :: Security",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = []
+
+[project.scripts]
+tool-guard = "tool_guard.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
