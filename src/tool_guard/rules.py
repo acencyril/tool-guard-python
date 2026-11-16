@@ -34,6 +34,13 @@ class Limit:
 
 
 @dataclass(frozen=True)
+class AllowedValues:
+    argument: str
+    patterns: tuple[str, ...]
+    otherwise: str = APPROVAL
+
+
+@dataclass(frozen=True)
 class RateLimit:
     limit: int
     seconds: int
@@ -49,11 +56,12 @@ class RequiresApproval:
 class Rules:
     granted: list[Granted] = field(default_factory=list)
     limits: list[Limit] = field(default_factory=list)
+    values: list[AllowedValues] = field(default_factory=list)
     rate: RateLimit | None = None
     approval: RequiresApproval | None = None
 
     def empty(self) -> bool:
-        return not (self.granted or self.limits or self.rate or self.approval)
+        return not (self.granted or self.limits or self.values or self.rate or self.approval)
 
     def describe(self) -> list[str]:
         out = [f"granted {g.permission}" + (f" on {g.subject}" if g.subject else "") for g in self.granted]
@@ -63,6 +71,9 @@ class Rules:
             low = f"{_num(lim.min)} ≤ " if lim.min is not None else ""
             out.append(f"limit {low}{lim.argument} ≤ {_num(lim.max)}, above: "
                        + ("refused" if lim.above == DENY else "held for a human"))
+        for v in self.values:
+            out.append(f"allowed_values {v.argument} in {', '.join(v.patterns)}, otherwise: "
+                       + ("refused" if v.otherwise == DENY else "held for a human"))
         if self.approval:
             out.append("requires_approval" + (f" {self.approval.reason}" if self.approval.reason else ""))
         return out
@@ -102,6 +113,20 @@ def limit(argument: str, *, max: float, above: str = DENY, min: float | None = N
 
     def deco(fn):
         _rules(fn).limits.append(Limit(argument, float(max), above, None if min is None else float(min)))
+        return fn
+    return deco
+
+
+def allowed_values(argument: str, *patterns: str, otherwise: str = APPROVAL):
+    """A text argument (or every item of a list) must match one of the patterns, shell-style and case-insensitive:
+    allowed_values("to", "*@mycompany.com"). Otherwise: held for a human (APPROVAL, default) or refused (DENY)."""
+    if not patterns:
+        raise ValueError("allowed_values needs at least one pattern")
+    if otherwise not in (DENY, APPROVAL):
+        raise ValueError('otherwise must be "deny" or "approval"')
+
+    def deco(fn):
+        _rules(fn).values.append(AllowedValues(argument, tuple(patterns), otherwise))
         return fn
     return deco
 

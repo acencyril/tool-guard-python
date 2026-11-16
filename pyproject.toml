@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tool-guard"
-version = "0.1.0"
+version = "0.2.0"
 description = "Permissions, limits, rate limits, human approval and a stop button for the tools an AI agent may call. A prompt asks; Tool Guard decides."
 readme = "README.md"
 requires-python = ">=3.10"

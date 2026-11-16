@@ -198,6 +198,17 @@ class GuardTest(unittest.TestCase):
                           "transfer": ["limit amount ≤ 1000, above: refused"]}, guard.rules())
 
 
+    def test_allowed_values(self):
+        from tool_guard import allowed_values, DENY
+        guard = Guard()
+        send = guard.tool()(allowed_values("to", "*@mycompany.com")(lambda to, body="": "sent"))
+        self.assertEqual("sent", send("Anna@MyCompany.com"))
+        self.assertIn('to "x@gmail.com" is not among the allowed values', send("x@gmail.com"))
+        self.assertIn("NOT done yet", send(["a@mycompany.com", "x@gmail.com"]))
+        strict = guard.tool("strict")(allowed_values("to", "*@mycompany.com", otherwise=DENY)(lambda to: "sent"))
+        self.assertIn("Refused by policy", strict(None))
+
+
 CURRENT = ["visitor"]
 
 if __name__ == "__main__":

@@ -13,6 +13,7 @@ gets a plain message telling it not to retry and to tell the user (refused, or w
 
 from __future__ import annotations
 
+import fnmatch
 import functools
 import inspect
 import math
@@ -63,6 +64,7 @@ class Guard:
         self.allow_unknown_agent = allow_unknown_agent
         self.four_eyes = four_eyes
         self._tools: dict[str, Callable[..., Any]] = {}
+        self.deferred = False  # the gateway: an approved call runs in the gateway process, not here
 
     # ---- declaring tools ----------------------------------------------------------------------
 
@@ -199,6 +201,15 @@ class Guard:
                 if lim.above == ABOVE_DENY:
                     return Decision.deny(why)
                 hold = hold or why
+        for av in r.values:
+            v = arguments.get(av.argument)
+            items = v if isinstance(v, (list, tuple)) else [v]
+            bad = [x for x in items if not isinstance(x, str) or not any(fnmatch.fnmatchcase(x.strip().lower(), p.lower()) for p in av.patterns)]
+            if v is None or v == [] or bad:
+                why = f'{av.argument} "{bad[0] if bad else v}" is not among the allowed values'
+                if av.otherwise == ABOVE_DENY:
+                    return Decision.deny(why)
+                hold = hold or why
         if hold is None and r.approval is not None:
             hold = r.approval.reason or f'every "{tool}" is approved by a human'
         return Decision.pending(hold) if hold is not None else Decision.allow()
@@ -218,8 +229,14 @@ class Guard:
         """A human approves: the tool runs now, with the arguments it was asked with."""
         a = self._waiting(approval_id, by)
         fn = self._tools.get(a.tool)
-        if fn is None:
+        if fn is None and not self.deferred:
             raise LookupError(f'tool "{a.tool}" is not registered with this guard')
+        if self.deferred or getattr(fn, "__tool_guard_deferred__", False):  # runs in the gateway process, which picks it up
+            a.status, a.queued, a.result = APPROVED, True, "approved, runs at the gateway's next check"
+            a.decided_by, a.decided_at = by, now_iso()
+            self.approvals.save(a)
+            self.journal.record({"event": "approval", "tool": a.tool, "approval": a.id, "status": a.status, "by": by})
+            return a
         target = getattr(fn, "__wrapped__", fn)
         try:
             result = target(**a.arguments)

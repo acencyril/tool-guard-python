@@ -44,6 +44,7 @@ class Approval:
     decided_by: str | None = None
     decided_at: str | None = None
     result: str | None = None
+    queued: bool = False
 
     @classmethod
     def new(cls, tool: str, arguments: dict[str, Any], user: str | None, reason: str, channel: str, agent: str | None) -> "Approval":
